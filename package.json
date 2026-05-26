@@ -1,0 +1,21 @@
+{
+  "name": "artook-chat-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WhatsApp-like chat backend for Artook. Relay + temporary queue, not persistent history.",
+  "workspaces": [
+    "shared",
+    "gateway",
+    "api",
+    "worker"
+  ],
+  "scripts": {
+    "build": "npm -ws run build",
+    "dev:gateway": "npm -w gateway run dev",
+    "dev:api": "npm -w api run dev",
+    "dev:worker": "npm -w worker run dev"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

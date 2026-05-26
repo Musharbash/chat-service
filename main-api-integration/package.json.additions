@@ -1,0 +1,13 @@
+{
+  "_comment": "Merge these into your main Artook API's package.json. `jose` is for JWT minting (chat-routes.ts). multer/mime-types/sharp are for chat-upload-route.ts — drop sharp if you don't need image dimensions probed.",
+  "dependencies": {
+    "jose": "^5.6.3",
+    "multer": "^1.4.5-lts.1",
+    "mime-types": "^2.1.35",
+    "sharp": "^0.33.4"
+  },
+  "devDependencies": {
+    "@types/multer": "^1.4.11",
+    "@types/mime-types": "^2.1.4"
+  }
+}

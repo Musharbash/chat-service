@@ -1,0 +1,150 @@
+name: artook-chat
+
+# Single Docker Compose file orchestrates the full chat backend.
+# `docker compose up` (with .env in this folder) brings up: gateway, api, worker, redis, postgres.
+# All services share the /backend build context so they can reuse the local `shared` workspace package.
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - chatnet
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chat}
+      POSTGRES_DB: ${POSTGRES_DB:-chat}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chat} -d ${POSTGRES_DB:-chat}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - chatnet
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgres://${POSTGRES_USER:-chat}:${POSTGRES_PASSWORD:-chat}@postgres:5432/${POSTGRES_DB:-chat}
+      # Key loading: prefer the file path. Either form works — see .env.example.
+      JWT_PUBLIC_KEY_FILE: /run/secrets/jwt.pub
+      JWT_ISSUER: ${JWT_ISSUER:-artook-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-artook-chat}
+      SOCKET_PATH: ${SOCKET_PATH:-/socket.io}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    volumes:
+      - ./jwt.pub:/run/secrets/jwt.pub:ro
+    ports:
+      - "${GATEWAY_PORT:-4000}:4000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - chatnet
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 4100
+      REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgres://${POSTGRES_USER:-chat}:${POSTGRES_PASSWORD:-chat}@postgres:5432/${POSTGRES_DB:-chat}
+      JWT_PRIVATE_KEY_FILE: /run/secrets/jwt.key
+      JWT_PUBLIC_KEY_FILE: /run/secrets/jwt.pub
+      JWT_ISSUER: ${JWT_ISSUER:-artook-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-artook-chat}
+      SOCKET_TOKEN_TTL_SECONDS: ${SOCKET_TOKEN_TTL_SECONDS:-3600}
+      # Both are OPTIONAL in dev — leave blank in .env and POST /v1/socket-token
+      # will return 401 unless the caller uses SERVICE_SECRET. Smoke testing
+      # should use scripts/smoke-test.ts which bypasses the api service entirely.
+      UPSTREAM_AUTH_INTROSPECT_URL: ${UPSTREAM_AUTH_INTROSPECT_URL:-}
+      UPSTREAM_AUTH_SHARED_SECRET: ${UPSTREAM_AUTH_SHARED_SECRET:-}
+      # Service-to-service secret used by the main API when calling chat-api on
+      # behalf of a user. Must match the value baked into the main API.
+      SERVICE_SECRET: ${SERVICE_SECRET:-}
+    volumes:
+      - ./jwt.key:/run/secrets/jwt.key:ro
+      - ./jwt.pub:/run/secrets/jwt.pub:ro
+    ports:
+      - "${API_PORT:-4100}:4100"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4100/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - chatnet
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 4200
+      REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgres://${POSTGRES_USER:-chat}:${POSTGRES_PASSWORD:-chat}@postgres:5432/${POSTGRES_DB:-chat}
+      FCM_SERVICE_ACCOUNT_JSON: ${FCM_SERVICE_ACCOUNT_JSON}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID}
+      UNDELIVERED_TTL_DAYS: ${UNDELIVERED_TTL_DAYS:-14}
+      SWEEP_INTERVAL_SECONDS: ${SWEEP_INTERVAL_SECONDS:-300}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4200/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - chatnet
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  chatnet:
+    driver: bridge

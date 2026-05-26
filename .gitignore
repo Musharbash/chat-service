@@ -1,0 +1,17 @@
+# Secrets — NEVER commit these.
+# Anyone with these files can mint JWT tokens for your users or impersonate
+# the chat-api when calling your main API. Regenerate on the server, keep
+# them out of git history.
+.env
+.env.*
+!.env.example
+jwt.key
+jwt.pub
+*.pem
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
