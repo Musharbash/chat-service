@@ -10,6 +10,7 @@ import { createTokenMinter } from './token';
 import { createUpstreamAuth } from './upstream-auth';
 import { createChatJwtVerifier } from './verify-chat-jwt';
 import { registerRoutes } from './routes';
+import { startUploadsCleanup } from './uploads-cleanup';
 
 async function main() {
   const cfg = loadConfig();
@@ -73,9 +74,14 @@ async function main() {
   await app.listen({ port: cfg.PORT, host: '0.0.0.0' });
   log.info({ port: cfg.PORT }, 'HTTP up');
 
+  // Background loop that nukes uploaded files older than UPLOAD_FILE_TTL_DAYS.
+  // Chat is relay-only; files outliving message delivery are dead weight.
+  const cleanupTimer = startUploadsCleanup(cfg, log);
+
   const shutdown = async (signal: string) => {
     log.warn({ signal }, 'shutdown signal received');
     try {
+      clearInterval(cleanupTimer);
       await app.close();
       await redis.quit();
       await pg.end();

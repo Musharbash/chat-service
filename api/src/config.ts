@@ -39,6 +39,14 @@ const Env = z.object({
   UPLOAD_MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(15 * 1024 * 1024),
   UPLOAD_MAX_VOICE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   UPLOAD_MAX_FILE_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
+  // How long uploaded files survive on disk before the cleanup loop nukes
+  // them. Chat is relay-only — messages are gone from Redis within
+  // UNDELIVERED_TTL_DAYS (default 14), so files outliving that window are
+  // pointing at nothing and just consuming disk. 14 days matches.
+  UPLOAD_FILE_TTL_DAYS: z.coerce.number().int().positive().default(14),
+  // Cleanup loop cadence. Default = hourly. Lower in tests, raise to
+  // every few hours in production if the upload volume is small.
+  UPLOAD_CLEANUP_INTERVAL_SECONDS: z.coerce.number().int().positive().default(3600),
 });
 
 type RawEnv = z.infer<typeof Env>;
