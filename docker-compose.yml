@@ -95,9 +95,20 @@ services:
       # Service-to-service secret used by the main API when calling chat-api on
       # behalf of a user. Must match the value baked into the main API.
       SERVICE_SECRET: ${SERVICE_SECRET:-}
+      # Where chat uploads (images / voice / files) live INSIDE the container.
+      # Backed by a host bind-mount so files survive container rebuilds.
+      UPLOADS_DIR: /data/chat-uploads
+      # Origin advertised in the URL returned to clients after upload. When
+      # cleartext-on-IP (test deployment), this is the public IP:port. Once
+      # you move to a real domain + TLS, change to https://chat.yourdomain.com.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://156.67.28.84:4100}
+      UPLOAD_MAX_IMAGE_BYTES: ${UPLOAD_MAX_IMAGE_BYTES:-15728640}
+      UPLOAD_MAX_VOICE_BYTES: ${UPLOAD_MAX_VOICE_BYTES:-10485760}
+      UPLOAD_MAX_FILE_BYTES: ${UPLOAD_MAX_FILE_BYTES:-52428800}
     volumes:
       - ./jwt.key:/run/secrets/jwt.key:ro
       - ./jwt.pub:/run/secrets/jwt.pub:ro
+      - ./uploads:/data/chat-uploads
     ports:
       - "${API_PORT:-4100}:4100"
     depends_on:

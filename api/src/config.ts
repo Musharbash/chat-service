@@ -26,6 +26,19 @@ const Env = z.object({
   // `X-Service-Secret: <SERVICE_SECRET>` and an explicit userId in the body.
   // Treated as more privileged than a user bearer — keep it long + random.
   SERVICE_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
+  // Where uploaded chat media is written + read from. Must be on a Docker
+  // volume so files survive container restarts. Default matches the
+  // docker-compose bind mount.
+  UPLOADS_DIR: z.string().default('/data/chat-uploads'),
+  // Origin returned in upload responses (e.g. http://156.67.28.84:4100).
+  // Used to build the absolute URL clients fetch the file from. If unset,
+  // we fall back to building the URL from the request — fine in single-
+  // node setups but breaks when sitting behind a proxy.
+  PUBLIC_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  // Per-kind upload caps (bytes). Tune if voice notes start to exceed 10MB.
+  UPLOAD_MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(15 * 1024 * 1024),
+  UPLOAD_MAX_VOICE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  UPLOAD_MAX_FILE_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
 });
 
 type RawEnv = z.infer<typeof Env>;
