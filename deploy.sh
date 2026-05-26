@@ -32,6 +32,8 @@ else
     echo "    generated jwt.key + jwt.pub (keep these — losing jwt.key invalidates every device)"
 fi
 
+chmod 644 jwt.key jwt.pub
+
 echo "==> 2/5  .env + SECRETS.txt"
 if [[ -f .env ]]; then
     echo "    already exists, skipping (edit it manually if you want to rotate)"
