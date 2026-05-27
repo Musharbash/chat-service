@@ -40,7 +40,18 @@ export const VoiceBody = z.object({
   bytes: z.number().int().positive().max(20 * 1024 * 1024).optional(),
 });
 
-export const MessageBody = z.discriminatedUnion('runtimeType', [TextBody, ImageBody, VoiceBody]);
+// Arbitrary file attachment (PDF, doc, zip, etc). Mirrors what the
+// /v1/upload endpoint accepts with kind='file'. The client renders a
+// card with the file name, size and type — no inline preview.
+export const FileBody = z.object({
+  runtimeType: z.literal('file'),
+  url: z.string().url(),
+  name: z.string().min(1).max(256),
+  bytes: z.number().int().positive().max(50 * 1024 * 1024).optional(),
+  mime: z.string().max(128).optional(),
+});
+
+export const MessageBody = z.discriminatedUnion('runtimeType', [TextBody, ImageBody, VoiceBody, FileBody]);
 export type MessageBody = z.infer<typeof MessageBody>;
 
 // Wire envelope sent by clients with `message:send`. clientId is the durable ULID.
