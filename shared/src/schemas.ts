@@ -45,6 +45,19 @@ export const VoiceBody = z.object({
   bytes: z.number().int().positive().max(20 * 1024 * 1024).nullish(),
 });
 
+// Video posts from the chat gallery picker. The client tap-opens the URL
+// in the system player; no inline preview on the server side (the
+// recipient renders a placeholder tile with size + duration + play icon).
+export const VideoBody = z.object({
+  runtimeType: z.literal('video'),
+  url: z.string().url(),
+  durationMs: z.number().int().positive().max(60 * 60 * 1000).nullish(),
+  width: z.number().int().positive().max(8192).nullish(),
+  height: z.number().int().positive().max(8192).nullish(),
+  bytes: z.number().int().positive().max(200 * 1024 * 1024).nullish(),
+  mime: z.string().max(64).nullish(),
+});
+
 // Arbitrary file attachment (PDF, doc, zip, etc). Mirrors what the
 // /v1/upload endpoint accepts with kind='file'. The client renders a
 // card with the file name, size and type — no inline preview.
@@ -56,7 +69,7 @@ export const FileBody = z.object({
   mime: z.string().max(128).nullish(),
 });
 
-export const MessageBody = z.discriminatedUnion('runtimeType', [TextBody, ImageBody, VoiceBody, FileBody]);
+export const MessageBody = z.discriminatedUnion('runtimeType', [TextBody, ImageBody, VoiceBody, VideoBody, FileBody]);
 export type MessageBody = z.infer<typeof MessageBody>;
 
 // Wire envelope sent by clients with `message:send`. clientId is the durable ULID.

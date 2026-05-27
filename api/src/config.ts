@@ -38,6 +38,9 @@ const Env = z.object({
   // Per-kind upload caps (bytes). Tune if voice notes start to exceed 10MB.
   UPLOAD_MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(15 * 1024 * 1024),
   UPLOAD_MAX_VOICE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  // Videos can get chunky fast — phone cameras often emit 50-150MB clips
+  // for a few seconds at 4K. 200MB cap matches WhatsApp's default.
+  UPLOAD_MAX_VIDEO_BYTES: z.coerce.number().int().positive().default(200 * 1024 * 1024),
   UPLOAD_MAX_FILE_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
   // How long uploaded files survive on disk before the cleanup loop nukes
   // them. Chat is relay-only — messages are gone from Redis within

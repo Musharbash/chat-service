@@ -138,7 +138,7 @@ export async function registerRoutes(
       return reply.code(400).send({ ok: false, code: 'bad_request', message: 'multipart/form-data required' });
     }
 
-    let kind: 'image' | 'voice' | 'file' | null = null;
+    let kind: 'image' | 'voice' | 'video' | 'file' | null = null;
     let savedPath: string | null = null;
     let savedName: string | null = null;
     let savedMime: string | null = null;
@@ -150,7 +150,7 @@ export async function registerRoutes(
         if (part.type === 'field') {
           if (part.fieldname === 'kind') {
             const v = String(part.value);
-            if (v === 'image' || v === 'voice' || v === 'file') kind = v;
+            if (v === 'image' || v === 'voice' || v === 'video' || v === 'file') kind = v;
           }
           continue;
         }
@@ -166,7 +166,9 @@ export async function registerRoutes(
           ? deps.cfg.UPLOAD_MAX_IMAGE_BYTES
           : kind === 'voice'
             ? deps.cfg.UPLOAD_MAX_VOICE_BYTES
-            : deps.cfg.UPLOAD_MAX_FILE_BYTES;
+            : kind === 'video'
+              ? deps.cfg.UPLOAD_MAX_VIDEO_BYTES
+              : deps.cfg.UPLOAD_MAX_FILE_BYTES;
 
         const mime = part.mimetype || 'application/octet-stream';
         // Soft mime check — block obvious wrong-kind uploads but stay permissive.
@@ -175,6 +177,9 @@ export async function registerRoutes(
         }
         if (kind === 'voice' && !mime.startsWith('audio/')) {
           return reply.code(415).send({ ok: false, code: 'wrong_mime', message: `voice kind requires audio/* mime, got ${mime}` });
+        }
+        if (kind === 'video' && !mime.startsWith('video/')) {
+          return reply.code(415).send({ ok: false, code: 'wrong_mime', message: `video kind requires video/* mime, got ${mime}` });
         }
 
         const ext = (extname(part.filename || '') || guessExt(mime) || '').toLowerCase().slice(0, 8);
