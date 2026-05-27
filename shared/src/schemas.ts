@@ -24,20 +24,25 @@ export const TextBody = z.object({
   text: z.string().min(1).max(4000),
 });
 
+// .nullish() instead of .optional() because Flutter's JSON serializer
+// emits `"field": null` when a nullable Dart field is null — not absent.
+// Zod's .optional() only accepts `undefined` (key missing) and rejects
+// explicit `null`, which causes "Expected number, received null"
+// validation failures. .nullish() accepts both `undefined` and `null`.
 export const ImageBody = z.object({
   runtimeType: z.literal('image'),
   url: z.string().url(),
-  width: z.number().int().positive().max(8192).optional(),
-  height: z.number().int().positive().max(8192).optional(),
-  bytes: z.number().int().positive().max(20 * 1024 * 1024).optional(),
-  mime: z.string().max(64).optional(),
+  width: z.number().int().positive().max(8192).nullish(),
+  height: z.number().int().positive().max(8192).nullish(),
+  bytes: z.number().int().positive().max(20 * 1024 * 1024).nullish(),
+  mime: z.string().max(64).nullish(),
 });
 
 export const VoiceBody = z.object({
   runtimeType: z.literal('voice'),
   url: z.string().url(),
   durationMs: z.number().int().positive().max(10 * 60 * 1000),
-  bytes: z.number().int().positive().max(20 * 1024 * 1024).optional(),
+  bytes: z.number().int().positive().max(20 * 1024 * 1024).nullish(),
 });
 
 // Arbitrary file attachment (PDF, doc, zip, etc). Mirrors what the
@@ -47,8 +52,8 @@ export const FileBody = z.object({
   runtimeType: z.literal('file'),
   url: z.string().url(),
   name: z.string().min(1).max(256),
-  bytes: z.number().int().positive().max(50 * 1024 * 1024).optional(),
-  mime: z.string().max(128).optional(),
+  bytes: z.number().int().positive().max(50 * 1024 * 1024).nullish(),
+  mime: z.string().max(128).nullish(),
 });
 
 export const MessageBody = z.discriminatedUnion('runtimeType', [TextBody, ImageBody, VoiceBody, FileBody]);
